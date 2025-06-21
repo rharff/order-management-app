@@ -5,21 +5,31 @@ class ProductsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Sample product data
+    final products = [
+      {'name': 'Laptop', 'stock': 5, 'price': 1200.0},
+      {'name': 'Mouse', 'stock': 20, 'price': 25.5},
+      {'name': 'Keyboard', 'stock': 15, 'price': 45.0},
+      {'name': 'Monitor', 'stock': 7, 'price': 300.0},
+    ];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products'),
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       body: ListView.builder(
-        itemCount: 0, // This will be replaced with actual products
+        itemCount: products.length,
         itemBuilder: (context, index) {
-          return const Card(
-            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          final product = products[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
-              leading: Icon(Icons.inventory),
-              title: Text('Product Name'),
-              subtitle: Text('Stock: 10'),
-              trailing: Text('\$99.99'),
+              leading: const Icon(Icons.inventory),
+              title: Text(product['name'] as String),
+              subtitle: Text('Stock: ${product['stock']}'),
+              trailing: Text(
+                '\$${(product['price'] as double).toStringAsFixed(2)}',
+              ),
             ),
           );
         },
