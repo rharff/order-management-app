@@ -6,8 +6,6 @@ import 'package:flutter/material.dart';
 List<Map<String, dynamic>> products = [
   {'name': 'Chocolate Cake', 'price': 25.00, 'stock': 50},
   {'name': 'Vanilla Cake', 'price': 20.00, 'stock': 45},
-  {'name': 'Red Velvet Cake', 'price': 30.00, 'stock': 30},
-  {'name': 'Cheesecake', 'price': 35.00, 'stock': 25},
 ];
 
 class ProductsPage extends StatefulWidget {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'pages/dashboard_page.dart';
-import 'pages/orders_page.dart';
-import 'pages/products_page.dart';
-import 'pages/customers_page.dart';
-import 'pages/settings_page.dart';
+import 'pages/dashboard/dashboard_page.dart';
+import 'pages/order/orders_page.dart';
+import 'pages/product/products_page.dart';
+import 'pages/customer/customers_page.dart';
+import 'pages/settings/settings_page.dart';
 
 void main() {
   runApp(const MyApp());
