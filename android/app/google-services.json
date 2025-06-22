@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "350441056707",
+    "project_id": "order-schedule-7af99",
+    "storage_bucket": "order-schedule-7af99.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:350441056707:android:7b323d8031a8369427f576",
+        "android_client_info": {
+          "package_name": "com.example.order_management"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuvIv1XS4O01Fo2S5I6t71XviWxyLW_K0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
