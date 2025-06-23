@@ -1,21 +1,22 @@
-/// Utility function to sort orders by deadline (nearest future first)
-/// Usage: sortOrdersByDeadline(listOfOrders);
+// lib/order_sort_utils.dart
+
+// Function to sort orders by their deadline,
+// prioritizing orders with a deadline over those without,
+// and then by chronological order.
 void sortOrdersByDeadline(List<Map<String, dynamic>> orders) {
-  DateTime now = DateTime.now();
   orders.sort((a, b) {
-    final aObj = a['datetimeObj'] as DateTime?;
-    final bObj = b['datetimeObj'] as DateTime?;
-    if (aObj == null || bObj == null) return 0;
-    final aDiff = aObj.difference(now).inSeconds;
-    final bDiff = bObj.difference(now).inSeconds;
-    if (aDiff >= 0 && bDiff >= 0) {
-      return aDiff.compareTo(bDiff);
-    } else if (aDiff >= 0) {
-      return -1;
-    } else if (bDiff >= 0) {
-      return 1;
+    final DateTime? deadlineA = a['datetimeObj'];
+    final DateTime? deadlineB = b['datetimeObj'];
+
+    if (deadlineA == null && deadlineB == null) {
+      return 0; // Both have no deadline, maintain relative order.
+    } else if (deadlineA == null) {
+      return 1; // A has no deadline, B has one, so B comes first.
+    } else if (deadlineB == null) {
+      return -1; // A has deadline, B has no, so A comes first.
     } else {
-      return bDiff.compareTo(aDiff);
+      // Both have deadlines, sort chronologically.
+      return deadlineA.compareTo(deadlineB);
     }
   });
 }

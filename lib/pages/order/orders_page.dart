@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'order_card.dart';
 import 'order_dialog.dart';
 import 'order_sort_utils.dart';
+import 'completed_orders_page.dart'; // Import the new completed orders page
 
 // Global orders list for persistence across navigation
 final List<Map<String, dynamic>> orders = [];
@@ -21,6 +22,7 @@ class _OrdersPageState extends State<OrdersPage> {
   void initState() {
     super.initState();
     _loadOrders();
+    _loadCompletedOrdersFromPreferences(); // Load completed orders too, to ensure state consistency
   }
 
   Future<void> _saveOrders() async {
@@ -34,6 +36,18 @@ class _OrdersPageState extends State<OrdersPage> {
       }).toList(),
     );
     await prefs.setString('orders', ordersJson);
+  }
+
+  Future<void> _saveCompletedOrders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ordersJson = jsonEncode(
+      completedOrders.map((order) {
+        final copy = Map<String, dynamic>.from(order);
+        copy['datetimeObj'] = copy['datetimeObj']?.toIso8601String();
+        return copy;
+      }).toList(),
+    );
+    await prefs.setString('completedOrders', ordersJson);
   }
 
   Future<void> _loadOrders() async {
@@ -51,7 +65,28 @@ class _OrdersPageState extends State<OrdersPage> {
           return map;
         }),
       );
+      sortOrdersByDeadline(orders);
       setState(() {});
+    }
+  }
+
+  // A dedicated load function for completed orders to be used internally
+  Future<void> _loadCompletedOrdersFromPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ordersString = prefs.getString('completedOrders');
+    if (ordersString != null) {
+      final List<dynamic> decoded = jsonDecode(ordersString);
+      completedOrders.clear();
+      completedOrders.addAll(
+        decoded.map((e) {
+          final map = Map<String, dynamic>.from(e);
+          if (map['datetimeObj'] != null) {
+            map['datetimeObj'] = DateTime.parse(map['datetimeObj']);
+          }
+          return map;
+        }),
+      );
+      setState(() {}); // Update the state if completed orders are loaded
     }
   }
 
@@ -86,6 +121,42 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
+  void _completeOrder(int index) {
+    setState(() {
+      final completedOrder = orders.removeAt(index);
+      completedOrders.add(completedOrder);
+      sortOrdersByDeadline(completedOrders); // Optional: sort completed orders
+    });
+    _saveOrders();
+    _saveCompletedOrders();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Order marked as completed!')));
+  }
+
+  void _uncompleteOrder(Map<String, dynamic> orderToUncomplete) {
+    setState(() {
+      // Find and remove the order from completedOrders
+      completedOrders.removeWhere(
+        (order) =>
+            order['customer'] == orderToUncomplete['customer'] &&
+            order['product'] == orderToUncomplete['product'] &&
+            order['datetime'] == orderToUncomplete['datetime'],
+      ); // Use a more robust unique identifier if available
+
+      // Add it back to the main orders list
+      orders.add(orderToUncomplete);
+      sortOrdersByDeadline(orders);
+    });
+    _saveOrders();
+    _saveCompletedOrders();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Order re-checked and moved back to active orders.'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,6 +164,24 @@ class _OrdersPageState extends State<OrdersPage> {
         title: const Text('Orders'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check_circle_outline),
+            tooltip: 'View Completed Orders',
+            onPressed: () async {
+              // When navigating to CompletedOrdersPage, wait for result if an order was uncompleted
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CompletedOrdersPage(),
+                ),
+              );
+              if (result != null && result['action'] == 'uncomplete') {
+                _uncompleteOrder(result['order']);
+              }
+            },
+          ),
+        ],
       ),
       body:
           orders.isEmpty
@@ -115,6 +204,8 @@ class _OrdersPageState extends State<OrdersPage> {
                       });
                       _saveOrders();
                     },
+                    onToggleComplete: () => _completeOrder(index),
+                    isCompleted: false,
                   );
                 },
               ),

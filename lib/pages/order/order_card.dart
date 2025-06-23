@@ -6,14 +6,18 @@ import 'dart:convert'; // Import for JSON encoding/decoding
 
 class OrderCard extends StatelessWidget {
   final Map<String, dynamic> order;
-  final VoidCallback onEdit; // Tambahkan parameter untuk tombol edit
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onToggleComplete; // New callback for complete/uncomplete
+  final bool isCompleted; // New parameter to indicate if the order is completed
 
   const OrderCard({
     super.key,
     required this.order,
-    required this.onEdit, // Tambahkan ke konstruktor
+    required this.onEdit,
     required this.onDelete,
+    required this.onToggleComplete, // Add to constructor
+    this.isCompleted = false, // Default to false
   });
 
   @override
@@ -30,7 +34,7 @@ class OrderCard extends StatelessWidget {
         return {'date': '-', 'time': '-'};
       }
 
-      // Assuming datetime format is like "2024-01-15 14:30:00" or similar
+      // Assuming datetime format is like "DD/MM/YY HH:MM" from OrderDialog
       final parts = datetime.split(' ');
       if (parts.length >= 2) {
         return {
@@ -122,7 +126,13 @@ class OrderCard extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => _showWhatsAppDialog(context, order['customer'] ?? ''),
+      onTap:
+          isCompleted
+              ? null
+              : () => _showWhatsAppDialog(
+                context,
+                order['customer'] ?? '',
+              ), // Disable onTap for completed orders
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         elevation: 4,
@@ -159,12 +169,9 @@ class OrderCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      SizedBox(
+                      const SizedBox(
                         width: 80,
-                        child: Text(
-                          'Customer',
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                        child: Text('Customer', style: TextStyle(fontSize: 16)),
                       ),
                       Text(
                         ': ${order['customer']}',
@@ -175,12 +182,9 @@ class OrderCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      SizedBox(
+                      const SizedBox(
                         width: 80,
-                        child: Text(
-                          'Product',
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                        child: Text('Product', style: TextStyle(fontSize: 16)),
                       ),
                       Text(
                         ': ${order['product'] ?? 'N/A'}',
@@ -191,12 +195,9 @@ class OrderCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      SizedBox(
+                      const SizedBox(
                         width: 80,
-                        child: Text(
-                          'Quantity',
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                        child: Text('Quantity', style: TextStyle(fontSize: 16)),
                       ),
                       Text(
                         ': ${order['quantity'] ?? '-'}',
@@ -217,13 +218,31 @@ class OrderCard extends StatelessWidget {
                   ),
                   Row(
                     children: [
+                      if (!isCompleted) // Show edit button only if not completed
+                        IconButton(
+                          icon: const Icon(
+                            Icons.edit,
+                            color: Colors.blue,
+                            size: 28,
+                          ),
+                          onPressed: onEdit,
+                        ),
                       IconButton(
-                        icon: const Icon(
-                          Icons.edit,
-                          color: Colors.blue,
+                        icon: Icon(
+                          isCompleted
+                              ? Icons.undo
+                              : Icons
+                                  .check_circle, // Change icon based on status
+                          color:
+                              isCompleted
+                                  ? Colors.orange
+                                  : Colors
+                                      .green, // Change color based on status
                           size: 28,
                         ),
-                        onPressed: onEdit,
+                        onPressed: onToggleComplete, // Use the new callback
+                        tooltip:
+                            isCompleted ? 'Recheck Order' : 'Mark as Completed',
                       ),
                       IconButton(
                         icon: const Icon(
