@@ -39,7 +39,20 @@
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="whatsapp" />
             <data android:mimeType="text/plain"/>
+        </intent>
+
+        <!-- Tambahkan DUA intent berikut untuk membuka WA.me links -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" android:host="wa.me" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="whatsapp" />
         </intent>
     </queries>
 </manifest>

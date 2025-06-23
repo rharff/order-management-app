@@ -1,12 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
-// This list now serves as the shared, mutable product data.
-// It is declared outside the ProductsPage class so it can be imported
-// by other files (like OrdersPage) and modified by this page.
-List<Map<String, dynamic>> products = [
-  {'name': 'Chocolate Cake', 'price': 25.00, 'stock': 50},
-  {'name': 'Vanilla Cake', 'price': 20.00, 'stock': 45},
-];
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProductsPage extends StatefulWidget {
   const ProductsPage({super.key});
@@ -16,10 +10,33 @@ class ProductsPage extends StatefulWidget {
 }
 
 class _ProductsPageState extends State<ProductsPage> {
+  List<Map<String, dynamic>> _products = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? productsString = prefs.getString('products');
+    if (productsString != null) {
+      final List<dynamic> decoded = jsonDecode(productsString);
+      setState(() {
+        _products = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      });
+    }
+  }
+
+  Future<void> _saveProducts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('products', jsonEncode(_products));
+  }
+
   void _showAddProductDialog() {
     final _nameController = TextEditingController();
     final _priceController = TextEditingController();
-    final _stockController = TextEditingController();
 
     showDialog(
       context: context,
@@ -46,11 +63,71 @@ class _ProductsPageState extends State<ProductsPage> {
                   ),
                   keyboardType: TextInputType.number,
                 ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final String name = _nameController.text.trim();
+                final double? price = double.tryParse(_priceController.text);
+
+                if (name.isNotEmpty && price != null) {
+                  setState(() {
+                    _products.add({'name': name, 'price': price});
+                  });
+                  _saveProducts();
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please fill all fields correctly.'),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Add Product'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditProductDialog(int index) {
+    final product = _products[index];
+    final _nameController = TextEditingController(text: product['name']);
+    final _priceController = TextEditingController(
+      text: product['price'].toString(),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Product'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Product Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
                 const SizedBox(height: 16),
                 TextField(
-                  controller: _stockController,
+                  controller: _priceController,
                   decoration: const InputDecoration(
-                    labelText: 'Stock',
+                    labelText: 'Price (Rp)',
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
@@ -69,17 +146,12 @@ class _ProductsPageState extends State<ProductsPage> {
               onPressed: () {
                 final String name = _nameController.text.trim();
                 final double? price = double.tryParse(_priceController.text);
-                final int? stock = int.tryParse(_stockController.text);
 
-                if (name.isNotEmpty && price != null && stock != null) {
+                if (name.isNotEmpty && price != null) {
                   setState(() {
-                    // Add the new product directly to the top-level 'products' list
-                    products.add({
-                      'name': name,
-                      'price': price,
-                      'stock': stock,
-                    });
+                    _products[index] = {'name': name, 'price': price};
                   });
+                  _saveProducts();
                   Navigator.of(context).pop();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -89,12 +161,19 @@ class _ProductsPageState extends State<ProductsPage> {
                   );
                 }
               },
-              child: const Text('Add Product'),
+              child: const Text('Save Changes'),
             ),
           ],
         );
       },
     );
+  }
+
+  String _formatRupiah(double value) {
+    String str = value.toStringAsFixed(0);
+    RegExp reg = RegExp(r'\B(?=(\d{3})+(?!\d))');
+    String formatted = str.replaceAllMapped(reg, (Match match) => '.');
+    return 'Rp $formatted';
   }
 
   @override
@@ -106,7 +185,7 @@ class _ProductsPageState extends State<ProductsPage> {
         foregroundColor: Colors.white,
       ),
       body:
-          products.isEmpty
+          _products.isEmpty
               ? const Center(
                 child: Text(
                   'No products available. Add your first product!',
@@ -114,73 +193,76 @@ class _ProductsPageState extends State<ProductsPage> {
                 ),
               )
               : ListView.builder(
-                itemCount: products.length,
+                itemCount: _products.length,
                 itemBuilder: (context, index) {
-                  final product =
-                      products[index]; // Using the top-level 'products' list
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.inventory,
-                            size: 30,
-                            color: Colors.blueGrey,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  product['name'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                  final product = _products[index];
+                  return GestureDetector(
+                    child: Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.inventory,
+                              size: 30,
+                              color: Colors.blueGrey,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    product['name'] as String,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Stock: ${product['stock']}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey,
+                                ],
+                              ),
+                            ),
+                            Text(
+                              _formatRupiah(product['price'] as double),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.edit,
+                                color: Colors.blueAccent,
+                              ),
+                              onPressed: () => _showEditProductDialog(index),
+                              tooltip: 'Edit',
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.redAccent,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _products.removeAt(index);
+                                });
+                                _saveProducts();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${product['name']} removed.',
+                                    ),
                                   ),
-                                ),
-                              ],
+                                );
+                              },
                             ),
-                          ),
-                          Text(
-                            'Rp ${(product['price'] as double).toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.delete,
-                              color: Colors.redAccent,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                products.removeAt(index);
-                              });
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('${product['name']} removed.'),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   );

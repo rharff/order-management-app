@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'order_card.dart';
 import 'order_dialog.dart';
-import 'orders_data.dart';
+import 'order_sort_utils.dart';
 
 // Global orders list for persistence across navigation
 final List<Map<String, dynamic>> orders = [];
@@ -15,6 +17,44 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
+  @override
+  void initState() {
+    super.initState();
+    _loadOrders();
+  }
+
+  Future<void> _saveOrders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ordersJson = jsonEncode(
+      orders.map((order) {
+        final copy = Map<String, dynamic>.from(order);
+        // DateTime object cannot be encoded, so convert to string
+        copy['datetimeObj'] = copy['datetimeObj']?.toIso8601String();
+        return copy;
+      }).toList(),
+    );
+    await prefs.setString('orders', ordersJson);
+  }
+
+  Future<void> _loadOrders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ordersString = prefs.getString('orders');
+    if (ordersString != null) {
+      final List<dynamic> decoded = jsonDecode(ordersString);
+      orders.clear();
+      orders.addAll(
+        decoded.map((e) {
+          final map = Map<String, dynamic>.from(e);
+          if (map['datetimeObj'] != null) {
+            map['datetimeObj'] = DateTime.parse(map['datetimeObj']);
+          }
+          return map;
+        }),
+      );
+      setState(() {});
+    }
+  }
+
   void _addOrder(Map<String, dynamic> order, {int? editIndex}) {
     setState(() {
       if (editIndex == null) {
@@ -22,8 +62,9 @@ class _OrdersPageState extends State<OrdersPage> {
       } else {
         orders[editIndex] = order;
       }
-      sortOrdersByDeadline();
+      sortOrdersByDeadline(orders);
     });
+    _saveOrders();
   }
 
   void _showAddOrderDialog() {
@@ -67,11 +108,12 @@ class _OrdersPageState extends State<OrdersPage> {
                   final order = orders[index];
                   return OrderCard(
                     order: order,
-                    onTap: () => _showEditOrderDialog(index),
+                    onEdit: () => _showEditOrderDialog(index),
                     onDelete: () {
                       setState(() {
                         orders.removeAt(index);
                       });
+                      _saveOrders();
                     },
                   );
                 },

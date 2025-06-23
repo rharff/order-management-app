@@ -1,15 +1,18 @@
 // order_card.dart
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import for launching URLs
+import 'package:shared_preferences/shared_preferences.dart'; // Import shared_preferences
+import 'dart:convert'; // Import for JSON encoding/decoding
 
 class OrderCard extends StatelessWidget {
   final Map<String, dynamic> order;
-  final VoidCallback onTap;
+  final VoidCallback onEdit; // Tambahkan parameter untuk tombol edit
   final VoidCallback onDelete;
 
   const OrderCard({
     super.key,
     required this.order,
-    required this.onTap,
+    required this.onEdit, // Tambahkan ke konstruktor
     required this.onDelete,
   });
 
@@ -41,8 +44,85 @@ class OrderCard extends StatelessWidget {
 
     final datetimeParts = parseDatetime(order['datetime']);
 
+    // Fungsi untuk mengambil nomor WhatsApp customer dari SharedPreferences
+    Future<String?> _getCustomerPhone(String customerName) async {
+      final prefs = await SharedPreferences.getInstance();
+      final String? customersJson = prefs.getString('customers');
+      if (customersJson != null) {
+        final List<dynamic> customerMaps = jsonDecode(customersJson);
+        for (var map in customerMaps) {
+          if (map['name'] == customerName) {
+            return map['phone'];
+          }
+        }
+      }
+      return null;
+    }
+
+    // Fungsi untuk membuka WhatsApp dengan dialog konfirmasi
+    void _showWhatsAppDialog(BuildContext context, String customerName) async {
+      final phone = await _getCustomerPhone(customerName);
+      if (phone == null || phone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nomor WhatsApp customer tidak ditemukan.'),
+          ),
+        );
+        return;
+      }
+      showDialog(
+        context: context,
+        builder:
+            (BuildContext dialogContext) => AlertDialog(
+              title: const Text('Hubungi via WhatsApp'),
+              content: Text(
+                'Customer ${order['customer']} memesan ${order['product'] ?? 'N/A'}',
+                style: const TextStyle(fontSize: 16),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    // Format nomor telepon seperti di customers_page.dart
+                    String cleanedPhoneNumber = phone.replaceAll(
+                      RegExp(r'[^0-9]'),
+                      '',
+                    );
+                    if (cleanedPhoneNumber.startsWith('0')) {
+                      cleanedPhoneNumber =
+                          '62${cleanedPhoneNumber.substring(1)}';
+                    } else if (!cleanedPhoneNumber.startsWith('62')) {
+                      cleanedPhoneNumber = '62$cleanedPhoneNumber';
+                    }
+                    final url = Uri.parse('https://wa.me/$cleanedPhoneNumber');
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Tidak dapat membuka WhatsApp. Pastikan aplikasi WhatsApp terinstal.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Hubungi'),
+                ),
+              ],
+            ),
+      );
+    }
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => _showWhatsAppDialog(context, order['customer'] ?? ''),
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         elevation: 4,
@@ -135,10 +215,25 @@ class OrderCard extends StatelessWidget {
                     formatRupiah(order['amount'] ?? 0),
                     style: const TextStyle(fontSize: 16),
                   ),
-                  // Tombol hapus untuk pesanan.
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red, size: 28),
-                    onPressed: onDelete,
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.edit,
+                          color: Colors.blue,
+                          size: 28,
+                        ),
+                        onPressed: onEdit,
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete,
+                          color: Colors.red,
+                          size: 28,
+                        ),
+                        onPressed: onDelete,
+                      ),
+                    ],
                   ),
                 ],
               ),

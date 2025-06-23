@@ -1,13 +1,11 @@
 // order_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:order_management/pages/product/products_page.dart';
-
-typedef OnOrderSaved =
-    void Function(Map<String, dynamic> order, {int? editIndex});
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OrderDialog extends StatefulWidget {
-  final OnOrderSaved onOrderSaved;
+  final Function(Map<String, dynamic> order, {int? editIndex}) onOrderSaved;
   final Map<String, dynamic>? initialOrder;
   final int? editIndex;
 
@@ -30,10 +28,15 @@ class _OrderDialogState extends State<OrderDialog> {
   String? _selectedProduct;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  List<Map<String, dynamic>> _products = [];
+  List<Map<String, dynamic>> _customers = [];
+  String? _selectedCustomer;
 
   @override
   void initState() {
     super.initState();
+    _loadProducts();
+    _loadCustomers();
     if (widget.initialOrder != null) {
       _quantityController = TextEditingController(
         text: widget.initialOrder!['quantity'].toString(),
@@ -46,6 +49,7 @@ class _OrderDialogState extends State<OrderDialog> {
       );
       _totalPrice = widget.initialOrder!['amount'];
       _selectedProduct = widget.initialOrder!['product'];
+      _selectedCustomer = widget.initialOrder!['customer'];
       _selectedDate = DateFormat(
         'dd/MM/yy',
       ).parse(widget.initialOrder!['datetime'].split(' ')[0]);
@@ -64,10 +68,34 @@ class _OrderDialogState extends State<OrderDialog> {
     }
   }
 
+  Future<void> _loadCustomers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? customersString = prefs.getString('customers');
+    if (customersString != null) {
+      final List<dynamic> decoded = jsonDecode(customersString);
+      setState(() {
+        _customers = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      });
+    }
+  }
+
+  Future<void> _loadProducts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? productsString = prefs.getString('products');
+    if (productsString != null) {
+      final List<dynamic> decoded = jsonDecode(productsString);
+      setState(() {
+        _products = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      });
+    }
+  }
+
   double _getProductPrice(String productName) {
-    return products.firstWhere(
-      (product) => product['name'] == productName,
-    )['price'];
+    final product = _products.firstWhere(
+      (p) => p['name'] == productName,
+      orElse: () => {'price': 0.0},
+    );
+    return (product['price'] as num?)?.toDouble() ?? 0.0;
   }
 
   void updateTotal() {
@@ -95,6 +123,27 @@ class _OrderDialogState extends State<OrderDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
+              value: _selectedCustomer,
+              decoration: const InputDecoration(
+                labelText: 'Customer',
+                border: OutlineInputBorder(),
+              ),
+              hint: const Text('Select a Customer'),
+              items:
+                  _customers.map((customer) {
+                    return DropdownMenuItem<String>(
+                      value: customer['name'],
+                      child: Text('${customer['name']} (${customer['phone']})'),
+                    );
+                  }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedCustomer = newValue;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
               value: _selectedProduct,
               decoration: const InputDecoration(
                 labelText: 'Product',
@@ -102,7 +151,7 @@ class _OrderDialogState extends State<OrderDialog> {
               ),
               hint: const Text('Select a Product'),
               items:
-                  products.map((product) {
+                  _products.map((product) {
                     return DropdownMenuItem<String>(
                       value: product['name'],
                       child: Text(
@@ -196,6 +245,13 @@ class _OrderDialogState extends State<OrderDialog> {
                 ),
               ),
             ),
+            if (_selectedCustomer == null ||
+                _selectedProduct == null ||
+                _quantityController.text.isEmpty ||
+                _dateController.text.isEmpty ||
+                _timeController.text.isEmpty ||
+                _totalPrice <= 0)
+              const SizedBox(),
           ],
         ),
       ),
@@ -206,7 +262,8 @@ class _OrderDialogState extends State<OrderDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            if (_selectedProduct != null &&
+            if (_selectedCustomer != null &&
+                _selectedProduct != null &&
                 _quantityController.text.isNotEmpty &&
                 _dateController.text.isNotEmpty &&
                 _timeController.text.isNotEmpty &&
@@ -214,7 +271,7 @@ class _OrderDialogState extends State<OrderDialog> {
               String orderDateTime =
                   '${_dateController.text} ${_timeController.text}';
               final order = {
-                'customer': 'Customer',
+                'customer': _selectedCustomer,
                 'product': _selectedProduct,
                 'quantity': int.tryParse(_quantityController.text) ?? 1,
                 'datetime': orderDateTime,
