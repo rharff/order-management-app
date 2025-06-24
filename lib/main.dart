@@ -4,9 +4,11 @@ import 'pages/order/orders_page.dart';
 import 'pages/product/products_page.dart';
 import 'pages/customer/customers_page.dart';
 import 'pages/settings/settings_page.dart';
-import 'pages/order/completed_orders_page.dart'; // Import the new page
+import 'pages/order/completed_orders_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(const MyApp());
 }
 
@@ -27,8 +29,7 @@ class MyApp extends StatelessWidget {
         '/products': (context) => const ProductsPage(),
         '/customers': (context) => const CustomersPage(),
         '/settings': (context) => const SettingsPage(),
-        '/completed_orders':
-            (context) => const CompletedOrdersPage(), // New route
+        '/completed_orders': (context) => const CompletedOrdersPage(),
       },
     );
   }

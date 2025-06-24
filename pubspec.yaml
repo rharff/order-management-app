@@ -1,5 +1,5 @@
-name: order_management
-description: "A new Flutter project."
+name: Ormane
+description: "Aplikasi untuk mengelola pesanan"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -34,11 +34,10 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  firebase_core: ^3.14.0
-  cloud_firestore: ^5.6.9
   intl: ^0.20.2
   url_launcher: ^6.2.6
   shared_preferences: ^2.5.3
+  flutter_local_notifications: ^17.1.2
 
 dev_dependencies:
   flutter_test:

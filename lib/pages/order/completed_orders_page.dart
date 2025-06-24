@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'order_card.dart';
-import 'order_sort_utils.dart'; // Make sure this is still relevant for sorting if needed
 
 // Global list for persistence across navigation for completed orders
 final List<Map<String, dynamic>> completedOrders = [];

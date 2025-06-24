@@ -5,7 +5,8 @@ import 'dart:convert';
 import 'order_card.dart';
 import 'order_dialog.dart';
 import 'order_sort_utils.dart';
-import 'completed_orders_page.dart'; // Import the new completed orders page
+import 'completed_orders_page.dart';
+import 'order_notification_service.dart'; // Import the notification service
 
 // Global orders list for persistence across navigation
 final List<Map<String, dynamic>> orders = [];
@@ -19,12 +20,14 @@ class OrdersPage extends StatefulWidget {
 
 class _OrdersPageState extends State<OrdersPage> {
   String _searchQuery = '';
+  late OrderNotificationService _notificationService; // Declare the service
 
   @override
   void initState() {
     super.initState();
+    _notificationService = OrderNotificationService(); // Initialize the service
     _loadOrders();
-    _loadCompletedOrdersFromPreferences(); // Load completed orders too, to ensure state consistency
+    _loadCompletedOrdersFromPreferences();
   }
 
   Future<void> _saveOrders() async {
@@ -69,6 +72,25 @@ class _OrdersPageState extends State<OrdersPage> {
       );
       sortOrdersByDeadline(orders);
       setState(() {});
+      _scheduleNotificationsForExistingOrders(); // Schedule notifications on load
+    }
+  }
+
+  void _scheduleNotificationsForExistingOrders() {
+    _notificationService
+        .cancelAllNotifications(); // Clear existing notifications to avoid duplicates
+    for (int i = 0; i < orders.length; i++) {
+      final order = orders[i];
+      if (order['datetimeObj'] != null &&
+          order['customer'] != null &&
+          order['product'] != null) {
+        _notificationService.scheduleOrderNotification(
+          i, // Use index as ID for simplicity, consider a more robust unique ID for production
+          order['customer'],
+          order['product'],
+          order['datetimeObj'],
+        );
+      }
     }
   }
 
@@ -102,6 +124,17 @@ class _OrdersPageState extends State<OrdersPage> {
       sortOrdersByDeadline(orders);
     });
     _saveOrders();
+    // Schedule notification for the new/edited order
+    if (order['datetimeObj'] != null &&
+        order['customer'] != null &&
+        order['product'] != null) {
+      _notificationService.scheduleOrderNotification(
+        editIndex ?? orders.indexOf(order), // Use existing index or new index
+        order['customer'],
+        order['product'],
+        order['datetimeObj'],
+      );
+    }
   }
 
   void _showAddOrderDialog() {
@@ -131,6 +164,9 @@ class _OrdersPageState extends State<OrdersPage> {
     });
     _saveOrders();
     _saveCompletedOrders();
+    _notificationService
+        .cancelAllNotifications(); // Reschedule all notifications after an order is completed
+    _scheduleNotificationsForExistingOrders();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Order marked as completed!')));
@@ -152,6 +188,9 @@ class _OrdersPageState extends State<OrdersPage> {
     });
     _saveOrders();
     _saveCompletedOrders();
+    _notificationService
+        .cancelAllNotifications(); // Reschedule all notifications after an order is uncompleted
+    _scheduleNotificationsForExistingOrders();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Order re-checked and moved back to active orders.'),
@@ -241,6 +280,9 @@ class _OrdersPageState extends State<OrdersPage> {
                               orders.removeAt(originalIndex);
                             });
                             _saveOrders();
+                            _notificationService
+                                .cancelAllNotifications(); // Reschedule all notifications after deletion
+                            _scheduleNotificationsForExistingOrders();
                           },
                           onToggleComplete: () => _completeOrder(originalIndex),
                           isCompleted: false,
