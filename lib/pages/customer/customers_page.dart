@@ -32,6 +32,7 @@ class CustomersPage extends StatefulWidget {
 class _CustomersPageState extends State<CustomersPage> {
   // Daftar pelanggan yang akan ditampilkan
   final List<Customer> _customers = [];
+  String _searchQuery = '';
   late SharedPreferences _prefs; // Deklarasi SharedPreferences
 
   @override
@@ -201,47 +202,85 @@ class _CustomersPageState extends State<CustomersPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter customers by search query
+    final filteredCustomers =
+        _customers.where((customer) {
+          final name = customer.name.toLowerCase();
+          final phone = customer.phone.toLowerCase();
+          final query = _searchQuery.toLowerCase();
+          return name.contains(query) || phone.contains(query);
+        }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Customers'),
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
-      body:
-          _customers.isEmpty
-              ? const Center(child: Text('Belum ada customer.'))
-              : ListView.builder(
-                itemCount: _customers.length,
-                itemBuilder: (context, index) {
-                  final customer = _customers[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.person)),
-                      title: Text(customer.name),
-                      subtitle: Text(customer.phone),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed:
-                                () => _addOrEditCustomer(
-                                  customer: customer,
-                                  index: index,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Cari nama atau nomor telepon',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child:
+                filteredCustomers.isEmpty
+                    ? const Center(child: Text('Belum ada customer.'))
+                    : ListView.builder(
+                      itemCount: filteredCustomers.length,
+                      itemBuilder: (context, index) {
+                        final customer = filteredCustomers[index];
+                        final originalIndex = _customers.indexOf(customer);
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.person),
+                            ),
+                            title: Text(customer.name),
+                            subtitle: Text(customer.phone),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed:
+                                      () => _addOrEditCustomer(
+                                        customer: customer,
+                                        index: originalIndex,
+                                      ),
+                                ),
+                                const Icon(Icons.chevron_right),
+                              ],
+                            ),
+                            onTap:
+                                () => _showWhatsAppDialog(
+                                  context,
+                                  customer.phone,
                                 ),
                           ),
-                          const Icon(Icons.chevron_right),
-                        ],
-                      ),
-                      // Panggilan _showWhatsAppDialog sudah benar dengan `context`
-                      onTap: () => _showWhatsAppDialog(context, customer.phone),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addOrEditCustomer(),
         child: const Icon(Icons.add),

@@ -18,6 +18,8 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -159,6 +161,21 @@ class _OrdersPageState extends State<OrdersPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter orders by search query
+    List<Map<String, dynamic>> filteredOrders =
+        orders.where((order) {
+          final customer = (order['customer'] ?? '').toString().toLowerCase();
+          final product = (order['product'] ?? '').toString().toLowerCase();
+          final date =
+              order['datetimeObj'] != null
+                  ? DateFormat('yyyy-MM-dd').format(order['datetimeObj'])
+                  : (order['datetime'] ?? '').toString();
+          final query = _searchQuery.toLowerCase();
+          return customer.contains(query) ||
+              product.contains(query) ||
+              date.contains(query);
+        }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Orders'),
@@ -183,32 +200,56 @@ class _OrdersPageState extends State<OrdersPage> {
           ),
         ],
       ),
-      body:
-          orders.isEmpty
-              ? const Center(
-                child: Text(
-                  'No orders yet. Add your first order!',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search by customer, product, or date',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              )
-              : ListView.builder(
-                itemCount: orders.length,
-                itemBuilder: (context, index) {
-                  final order = orders[index];
-                  return OrderCard(
-                    order: order,
-                    onEdit: () => _showEditOrderDialog(index),
-                    onDelete: () {
-                      setState(() {
-                        orders.removeAt(index);
-                      });
-                      _saveOrders();
-                    },
-                    onToggleComplete: () => _completeOrder(index),
-                    isCompleted: false,
-                  );
-                },
               ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child:
+                filteredOrders.isEmpty
+                    ? const Center(
+                      child: Text(
+                        'No orders found.',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                    )
+                    : ListView.builder(
+                      itemCount: filteredOrders.length,
+                      itemBuilder: (context, index) {
+                        final order = filteredOrders[index];
+                        final originalIndex = orders.indexOf(order);
+                        return OrderCard(
+                          order: order,
+                          onEdit: () => _showEditOrderDialog(originalIndex),
+                          onDelete: () {
+                            setState(() {
+                              orders.removeAt(originalIndex);
+                            });
+                            _saveOrders();
+                          },
+                          onToggleComplete: () => _completeOrder(originalIndex),
+                          isCompleted: false,
+                        );
+                      },
+                    ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddOrderDialog,
         child: const Icon(Icons.add),

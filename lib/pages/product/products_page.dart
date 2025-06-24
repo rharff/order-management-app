@@ -11,6 +11,7 @@ class ProductsPage extends StatefulWidget {
 
 class _ProductsPageState extends State<ProductsPage> {
   List<Map<String, dynamic>> _products = [];
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -178,96 +179,134 @@ class _ProductsPageState extends State<ProductsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter products by search query (name only)
+    final filteredProducts =
+        _products.where((product) {
+          final name = (product['name'] ?? '').toString().toLowerCase();
+          final query = _searchQuery.toLowerCase();
+          return name.contains(query);
+        }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
-      body:
-          _products.isEmpty
-              ? const Center(
-                child: Text(
-                  'No products available. Add your first product!',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Cari nama produk',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              )
-              : ListView.builder(
-                itemCount: _products.length,
-                itemBuilder: (context, index) {
-                  final product = _products[index];
-                  return GestureDetector(
-                    child: Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child:
+                filteredProducts.isEmpty
+                    ? const Center(
+                      child: Text(
+                        'No products available. Add your first product!',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
                       ),
-                      elevation: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.inventory,
-                              size: 30,
-                              color: Colors.blueGrey,
+                    )
+                    : ListView.builder(
+                      itemCount: filteredProducts.length,
+                      itemBuilder: (context, index) {
+                        final product = filteredProducts[index];
+                        final originalIndex = _products.indexOf(product);
+                        return GestureDetector(
+                          child: Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Row(
                                 children: [
+                                  const Icon(
+                                    Icons.inventory,
+                                    size: 30,
+                                    color: Colors.blueGrey,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          product['name'] as String,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                   Text(
-                                    product['name'] as String,
+                                    _formatRupiah(product['price'] as double),
                                     style: const TextStyle(
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      color: Colors.blueAccent,
+                                    ),
+                                    onPressed:
+                                        () => _showEditProductDialog(
+                                          originalIndex,
+                                        ),
+                                    tooltip: 'Edit',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _products.removeAt(originalIndex);
+                                      });
+                                      _saveProducts();
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            '${product['name']} removed.',
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
                             ),
-                            Text(
-                              _formatRupiah(product['price'] as double),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.edit,
-                                color: Colors.blueAccent,
-                              ),
-                              onPressed: () => _showEditProductDialog(index),
-                              tooltip: 'Edit',
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                color: Colors.redAccent,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _products.removeAt(index);
-                                });
-                                _saveProducts();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      '${product['name']} removed.',
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddProductDialog,
         child: const Icon(Icons.add),

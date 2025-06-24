@@ -85,7 +85,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     setState(() {
-      _totalOrders = orders.length + completedOrders.length;
+      _totalOrders = orders.length;
 
       final now = DateTime.now();
       int todayActiveOrders = 0;
@@ -137,7 +137,7 @@ class _DashboardPageState extends State<DashboardPage> {
           _nextOrderCountdown = 'sebentar lagi';
         }
       } else {
-        _nextOrderCountdown = 'Tidak ada';
+        _nextOrderCountdown = 'null';
       }
     });
   }

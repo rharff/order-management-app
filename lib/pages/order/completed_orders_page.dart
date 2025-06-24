@@ -57,12 +57,6 @@ class _CompletedOrdersPageState extends State<CompletedOrdersPage> {
   void _uncompleteOrder(int index, Map<String, dynamic> order) {
     setState(() {
       final movedOrder = completedOrders.removeAt(index);
-      // Assuming 'orders' list is available globally or passed via a callback if in separate context
-      // For simplicity, we'll call the save method of OrdersPage
-      // In a more complex app, consider a state management solution (Provider, Riverpod, BLoC)
-      // For now, we'll rely on shared_preferences reload on OrdersPage's initState.
-      // To immediately move it back, we need a way to access the 'orders' list from OrdersPage.
-      // Let's pass a callback to handle this for now.
       Navigator.of(context).pop({'action': 'uncomplete', 'order': movedOrder});
     });
     _saveCompletedOrders();
